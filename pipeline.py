@@ -215,12 +215,60 @@ def pick(items, key):
     return items[int(hashlib.md5(str(key).encode()).hexdigest(), 16) % len(items)]
 
 
+FILLER = STOP | {"for", "and", "with", "the", "your", "you", "multi", "function", "multifunctional",
+                 "portable", "simple", "convenient", "household", "home", "high", "quality", "large",
+                 "small", "mini", "creative", "universal", "style", "kitchen", "accessories",
+                 "accessory", "tool", "tools", "item", "items", "gadget", "gadgets", "use", "type"}
+DISCLOSURE = "As an AliExpress affiliate I may earn a commission from purchases."
+
+
+def product_words(raw_title):
+    """Meaningful words from the ORIGINAL AliExpress title (no AI, just filtering)."""
+    t = re.sub(r"[\(\[\{].*?[\)\]\}]", " ", raw_title or "")
+    t = re.sub(r"[^A-Za-z ]", " ", t)
+    out = []
+    for w in t.lower().split():
+        if len(w) >= 3 and w not in FILLER and w not in out:
+            out.append(w)
+    return out[:8]
+
+
+ADJ = {"plastic", "stainless", "steel", "manual", "hanging", "resistant", "heat", "non", "stick",
+       "wooden", "foldable", "adjustable", "electric", "automatic", "reusable", "double", "layer",
+       "tier", "silicone", "metal", "glass", "ceramic", "bamboo", "wall", "mounted", "free"}
+
+
+def make_hashtags(raw_title, niche, n=5):
+    """Hashtags from product-type words in the original title (+ the niche's own tags)."""
+    words = product_words(raw_title)
+    nouns = set(niche.get("product_nouns", []))
+    tags = []
+    for i, w in enumerate(words):
+        if w in nouns:
+            prev = words[i - 1] if i > 0 else ""
+            tags.append("#" + (prev + w if prev and prev not in ADJ and prev not in nouns else w))
+    out = []
+    for t in tags[:3] + niche["hashtags"]:
+        if t not in out and len(t) <= 28:
+            out.append(t)
+    return out[:n]
+
+
 def build_text(p, niche):
-    title = clean_title(p.get("product_title"))
-    desc = pick(niche["description_templates"], p["product_id"]).format(title=title)
-    tags = " ".join(niche["hashtags"][:4])
-    disclosure = "As an AliExpress affiliate I may earn a commission from purchases."
-    return title[:100], f"{desc} {tags} {disclosure}"[:490]
+    raw, pid = p.get("product_title"), p["product_id"]
+    title = clean_title(raw, 9)                          # pin title: a bit longer, keyword-rich
+    headline = clean_title(raw, 7)                       # text printed on the image: shorter
+    suffix = niche.get("title_suffix", "")
+    full_title = title
+    if niche.get("title_keyword", "kitchen").lower() not in title.lower() and len(title + suffix) <= 100:
+        full_title = title + suffix                      # keep the niche keyword in the pin title
+    benefit = pick(niche["benefit_lines"], f"b{pid}")
+    cta = pick(niche["cta_lines"], f"c{pid}")
+    tags = " ".join(make_hashtags(raw, niche))
+    desc = f"{title}. {benefit} {cta} {tags} {DISCLOSURE}"
+    if len(desc) > 490:
+        desc = f"{title}. {benefit} {tags} {DISCLOSURE}"
+    return full_title[:100], desc[:490], headline
 
 
 # -------------------------------------------------------------- image ----
@@ -367,8 +415,8 @@ def main():
                     print(f"[{name}] {pid}: no unique affiliate link, skipping")
                     continue
                 used_links.add(link)
-                title, desc = build_text(p, niche)
-                pin = make_pin(download_image(p["product_main_image_url"]), title, niche["tag"], pid)
+                title, desc, headline = build_text(p, niche)
+                pin = make_pin(download_image(p["product_main_image_url"]), headline, niche["tag"], pid)
                 jpg, b64 = to_jpeg_b64(pin)
             except Exception as e:  # keep going on one bad product
                 print(f"[{name}] {pid}: skipped ({e})")
@@ -377,7 +425,7 @@ def main():
             payload = {
                 "niche": name, "board_name": niche["board_name"], "product_id": pid,
                 "title": title, "description": desc, "link": link,
-                "alt_text": f"{title} - {name} product"[:480],
+                "alt_text": f"{title} - {name} product photo"[:480],
                 "image_content_type": "image/jpeg", "image_base64": b64,
                 "price": p.get("target_sale_price"), "good_rate": p.get("evaluate_rate"),
                 "orders": p.get("lastest_volume"), "commission": p.get("commission_rate"),
