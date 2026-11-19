@@ -21,9 +21,15 @@ POSTED_FILE = ROOT / "posted.json"
 OUT_DIR = ROOT / "out"
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36"}
 
-SIGN_METHODS = ["sha256", "md5"]
+SIGN_METHODS = ["sha256", "md5"]   # sha256 is what this account accepted
 TS_MODES = ["ms", "utc", "gmt8"]
-_mode = {"sign": None, "ts": None}
+VIAS = ["form", "query"]          # how the parameters are sent
+_mode = {"sign": None, "ts": None, "via": None}
+
+
+def env(name):
+    """Read a secret and strip stray spaces/newlines that break signatures."""
+    return os.environ.get(name, "").strip()
 
 
 # ---------------------------------------------------------------- API ----
@@ -41,9 +47,9 @@ def sign(params, secret, method):
     return hmac.new(secret.encode(), base.encode(), hashlib.sha256).hexdigest().upper()
 
 
-def raw_call(method, biz, sign_method, ts_mode):
+def raw_call(method, biz, sign_method, ts_mode, via="form"):
     params = {
-        "app_key": os.environ["AE_APP_KEY"],
+        "app_key": env("AE_APP_KEY"),
         "method": method,
         "sign_method": sign_method,
         "timestamp": make_ts(ts_mode),
@@ -51,8 +57,11 @@ def raw_call(method, biz, sign_method, ts_mode):
         "format": "json",
     }
     params.update({k: str(v) for k, v in biz.items() if v not in (None, "")})
-    params["sign"] = sign(params, os.environ["AE_APP_SECRET"], sign_method)
-    r = requests.post(API_URL, data=params, timeout=40)
+    params["sign"] = sign(params, env("AE_APP_SECRET"), sign_method)
+    if via == "query":
+        r = requests.post(API_URL, params=params, timeout=40)
+    else:
+        r = requests.post(API_URL, data=params, timeout=40)
     try:
         return r.json()
     except ValueError:
@@ -64,27 +73,45 @@ def is_error(data):
     return not any(k.endswith("_response") and k != "error_response" for k in data)
 
 
+def err_code(data):
+    e = data.get("error_response", data)
+    return str(e.get("code") or e.get("http_error") or "unknown")
+
+
 def detect_mode(probe):
-    """Find the signing/timestamp combination AliExpress accepts."""
-    s, t = os.environ.get("AE_SIGN_METHOD"), os.environ.get("AE_TS_MODE")
+    """Check the credentials, then find the signing/transport combination AliExpress accepts."""
+    key, secret = env("AE_APP_KEY"), env("AE_APP_SECRET")
+    print(f"[check] app_key={key!r} secret_length={len(secret)} "
+          f"tracking_id={env('AE_TRACKING_ID')!r} webhook_set={bool(env('MAKE_WEBHOOK_URL'))}")
+    if not key or not secret or not env("AE_TRACKING_ID"):
+        sys.exit("[check] a GitHub secret is empty. Re-add AE_APP_KEY, AE_APP_SECRET and "
+                 "AE_TRACKING_ID with the exact names (no typos).")
+    s, t = env("AE_SIGN_METHOD"), env("AE_TS_MODE")
     if s and t:
-        _mode.update(sign=s, ts=t)
+        _mode.update(sign=s, ts=t, via=env("AE_VIA") or "form")
         return
-    last = None
+    results = []
     for sm in SIGN_METHODS:
         for tm in TS_MODES:
-            data = raw_call("aliexpress.affiliate.product.query", probe, sm, tm)
-            if not is_error(data):
-                _mode.update(sign=sm, ts=tm)
-                print(f"[api] signing accepted: sign_method={sm} timestamp={tm}")
-                return
-            last = data
-            time.sleep(0.5)
-    sys.exit(f"[api] no signing mode accepted. Last response: {json.dumps(last)[:400]}")
+            for via in VIAS:
+                data = raw_call("aliexpress.affiliate.product.query", probe, sm, tm, via)
+                if not is_error(data):
+                    _mode.update(sign=sm, ts=tm, via=via)
+                    print(f"[api] accepted: sign_method={sm} timestamp={tm} via={via}")
+                    return
+                results.append(f"{sm}/{tm}/{via}: {err_code(data)}")
+                time.sleep(0.4)
+    print("[api] every combination was rejected:")
+    for line in results:
+        print("   ", line)
+    print("[api] last response:", json.dumps(data)[:400])
+    sys.exit("[api] If every line says IncompleteSignature, the App Secret (or App Key) in "
+             "GitHub is almost certainly not the current one. Re-copy it from the app's "
+             "Overview page (View) and update the AE_APP_SECRET secret.")
 
 
 def call(method, biz):
-    data = raw_call(method, biz, _mode["sign"], _mode["ts"])
+    data = raw_call(method, biz, _mode["sign"], _mode["ts"], _mode["via"])
     if is_error(data):
         raise RuntimeError(f"API error: {json.dumps(data)[:400]}")
     return data
@@ -116,14 +143,18 @@ def search(keyword, page, cfg, tracking_id):
 
 
 def get_link(p, tracking_id):
-    if p.get("promotion_link"):
-        return p["promotion_link"]
-    data = call("aliexpress.affiliate.link.generate", {
-        "promotion_link_type": "0", "source_values": p.get("product_detail_url", ""),
-        "tracking_id": tracking_id})
-    res = data.get("aliexpress_affiliate_link_generate_response", {}).get("resp_result", {}).get("result", {})
-    links = res.get("promotion_links", {}).get("promotion_link", [])
-    return links[0].get("promotion_link", "") if links else ""
+    """One affiliate link PER product, generated from that product's own URL."""
+    url = f"https://www.aliexpress.com/item/{p.get('product_id')}.html"
+    try:
+        data = call("aliexpress.affiliate.link.generate", {
+            "promotion_link_type": "0", "source_values": url, "tracking_id": tracking_id})
+        res = data.get("aliexpress_affiliate_link_generate_response", {}).get("resp_result", {}).get("result", {})
+        links = res.get("promotion_links", {}).get("promotion_link", [])
+        if links and links[0].get("promotion_link"):
+            return links[0]["promotion_link"]
+    except RuntimeError as e:
+        print(f"  link.generate failed for {p.get('product_id')}: {e}")
+    return p.get("promotion_link", "")
 
 
 # ------------------------------------------------------------ filtering ----
@@ -168,7 +199,10 @@ def clean_title(t, max_words=7):
     t = re.sub(r"[\(\[\{].*?[\)\]\}]", " ", t or "")
     t = re.sub(r"[^A-Za-z0-9&\- ]", " ", t)
     seen, out = set(), []
-    for w in t.split():
+    words = t.split()
+    while words and any(c.isdigit() for c in words[0]):   # "500 900ML Manual..." -> "Manual..."
+        words.pop(0)
+    for w in words:
         lw = w.lower()
         if lw in STOP or re.fullmatch(r"\d{4}", w) or lw in seen:
             continue
@@ -276,8 +310,8 @@ def main():
     args = ap.parse_args()
 
     cfg = json.loads((ROOT / "config.json").read_text())
-    tracking = os.environ["AE_TRACKING_ID"]
-    hook = os.environ.get("MAKE_WEBHOOK_URL", "")
+    tracking = env("AE_TRACKING_ID")
+    hook = env("MAKE_WEBHOOK_URL")
     if not args.dry_run and not hook:
         sys.exit("MAKE_WEBHOOK_URL is not set (use --dry-run to test without it)")
 
@@ -305,6 +339,7 @@ def main():
                     pid = str(p.get("product_id"))
                     if pid not in seen and passes(p, niche["filters"], niche["exclude_words"], done):
                         seen.add(pid)
+                        p["_kw"] = kw
                         cands.append(p)
                 time.sleep(1)
                 if not prods:
@@ -312,6 +347,13 @@ def main():
             if len(cands) >= limit * 4:
                 break
         cands.sort(key=score, reverse=True)
+        first, used_kw = [], set()          # prefer one product per keyword so pins vary
+        for p in cands:
+            if p["_kw"] not in used_kw:
+                used_kw.add(p["_kw"])
+                first.append(p)
+        cands = first + [p for p in cands if p not in first]
+        used_links = set()
         print(f"[{name}] {len(cands)} candidates passed filters; making up to {limit} pins")
 
         made = 0
@@ -321,9 +363,10 @@ def main():
             pid = str(p["product_id"])
             try:
                 link = get_link(p, tracking)
-                if not link:
-                    print(f"[{name}] {pid}: no affiliate link, skipping")
+                if not link or link in used_links:
+                    print(f"[{name}] {pid}: no unique affiliate link, skipping")
                     continue
+                used_links.add(link)
                 title, desc = build_text(p, niche)
                 pin = make_pin(download_image(p["product_main_image_url"]), title, niche["tag"], pid)
                 jpg, b64 = to_jpeg_b64(pin)
