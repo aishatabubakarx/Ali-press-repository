@@ -1,6 +1,6 @@
 {
   "settings": {
-    "pins_per_run": 2,
+    "pins_per_run": 10,
     "delay_seconds": 8,
     "max_pages": 2,
     "page_size": 50,
@@ -33,70 +33,54 @@
         "max_price": 40
       },
       "exclude_words": [],
+      "description_templates": [
+        "{title}: a handy kitchen find that makes everyday cooking and tidying easier. Save this idea for your next kitchen refresh.",
+        "Looking for kitchen ideas that actually help? This {title} is a popular pick with thousands of orders. Save it for later.",
+        "Small kitchen upgrade, big difference. {title} is a simple way to keep your kitchen neat and make prep easier.",
+        "Kitchen idea worth saving: {title}. Tap through to see details, photos and reviews."
+      ],
       "hashtags": [
         "#kitchengadgets",
         "#kitchenorganization",
         "#homefinds",
         "#kitchenideas"
       ],
-      "title_suffix": " | Kitchen Idea",
       "title_keyword": "kitchen",
+      "title_suffix": " - Kitchen Find",
       "benefit_lines": [
-        "A simple kitchen upgrade that keeps counters tidy and cooking prep easier.",
-        "Popular with home cooks and well rated by buyers.",
-        "Small kitchen find that makes everyday cooking and cleaning less of a chore.",
-        "Handy for small kitchens, saves time and space.",
-        "Easy kitchen idea worth saving for your next refresh.",
-        "A practical kitchen pick that buyers keep coming back to."
+        "A simple way to keep your kitchen tidy and make everyday cooking easier.",
+        "A handy upgrade that saves time and counter space.",
+        "Well reviewed and popular with hundreds of buyers.",
+        "Small change, big difference in how your kitchen works.",
+        "An easy fix for a cluttered kitchen."
       ],
       "cta_lines": [
         "Save this idea for later.",
-        "Tap through to see photos and reviews.",
-        "Pin it to your kitchen ideas board.",
-        "Tap to see details and sizes."
+        "Tap through to see details and reviews.",
+        "Pin it to your kitchen ideas board."
       ],
       "product_nouns": [
         "organizer",
         "rack",
-        "holder",
-        "basket",
         "chopper",
-        "slicer",
-        "cutter",
-        "spatula",
-        "utensils",
         "container",
         "containers",
+        "utensils",
+        "holder",
         "storage",
-        "shelf",
         "dispenser",
-        "strainer",
-        "grater",
-        "peeler",
-        "whisk",
+        "basket",
         "tray",
-        "bin",
-        "box",
-        "jar",
-        "bottle",
+        "shelf",
+        "cutter",
+        "slicer",
+        "peeler",
+        "grater",
         "mat",
-        "hook",
-        "press",
-        "mincer",
-        "opener",
-        "scale",
-        "timer",
-        "mold",
-        "tongs",
-        "ladle",
-        "colander",
-        "squeezer",
-        "cover",
-        "lid",
-        "pot",
-        "pan",
-        "knife",
-        "board"
+        "brush",
+        "jar",
+        "box",
+        "spatula"
       ]
     }
   ]
