@@ -14,7 +14,7 @@ on:
       limit:
         description: "Pins this run (blank = value in config.json)"
         required: false
-        default: "2"
+        default: "10"
 
 permissions:
   contents: write
@@ -59,6 +59,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Remember which products were posted
+        if: always()
         run: |
           git config user.name "pin-bot"
           git config user.email "pin-bot@users.noreply.github.com"
