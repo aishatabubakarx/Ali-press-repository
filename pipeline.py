@@ -265,10 +265,12 @@ def build_text(p, niche):
     benefit = pick(niche["benefit_lines"], f"b{pid}")
     cta = pick(niche["cta_lines"], f"c{pid}")
     tags = " ".join(make_hashtags(raw, niche))
-    desc = f"{title}. {benefit} {cta} {tags} {DISCLOSURE}"
+    core = f"{title}. {benefit} {cta}"                   # plain text; Make adds tags + disclosure itself
+    desc = f"{core} {tags} {DISCLOSURE}"
     if len(desc) > 490:
-        desc = f"{title}. {benefit} {tags} {DISCLOSURE}"
-    return full_title[:100], desc[:490], headline
+        core = f"{title}. {benefit}"
+        desc = f"{core} {tags} {DISCLOSURE}"
+    return full_title[:100], desc[:490], headline, core, tags
 
 
 # -------------------------------------------------------------- image ----
@@ -415,7 +417,7 @@ def main():
                     print(f"[{name}] {pid}: no unique affiliate link, skipping")
                     continue
                 used_links.add(link)
-                title, desc, headline = build_text(p, niche)
+                title, desc, headline, core, tags = build_text(p, niche)
                 pin = make_pin(download_image(p["product_main_image_url"]), headline, niche["tag"], pid)
                 jpg, b64 = to_jpeg_b64(pin)
             except Exception as e:  # keep going on one bad product
@@ -424,7 +426,11 @@ def main():
             (OUT_DIR / f"{name}_{pid}.jpg").write_bytes(jpg)
             payload = {
                 "niche": name, "board_name": niche["board_name"], "product_id": pid,
-                "title": title, "description": desc, "link": link,
+                # title / description_core are the NO-AI fallback; Make uses them if Gemini fails
+                "title": title, "description": desc, "description_core": core,
+                "hashtags": tags, "disclosure": DISCLOSURE,
+                "product_title": p.get("product_title") or "",   # the original AliExpress name, for Gemini
+                "link": link,                                     # your affiliate link -> the Pin's URL
                 "alt_text": f"{title} - {name} product photo"[:480],
                 "image_content_type": "image/jpeg", "image_base64": b64,
                 "price": p.get("target_sale_price"), "good_rate": p.get("evaluate_rate"),
