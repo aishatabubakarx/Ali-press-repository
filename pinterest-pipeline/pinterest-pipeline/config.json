@@ -1,0 +1,50 @@
+{
+  "settings": {
+    "pins_per_run": 2,
+    "delay_seconds": 8,
+    "max_pages": 2,
+    "page_size": 50,
+    "currency": "USD",
+    "language": "EN",
+    "ship_to_country": ""
+  },
+  "niches": [
+    {
+      "name": "kitchen",
+      "board_name": "Kitchen Gadgets & Finds",
+      "tag": "KITCHEN FIND",
+      "keywords": [
+        "kitchen organizer",
+        "silicone kitchen utensils",
+        "spice rack",
+        "vegetable chopper",
+        "reusable food storage",
+        "kitchen gadgets",
+        "drawer organizer kitchen",
+        "countertop storage rack",
+        "sink organizer",
+        "food storage containers"
+      ],
+      "filters": {
+        "min_good_rate": 92,
+        "min_orders": 300,
+        "min_commission": 5,
+        "min_price": 2,
+        "max_price": 40
+      },
+      "exclude_words": [],
+      "description_templates": [
+        "{title}: a handy kitchen find that makes everyday cooking and tidying easier. Save this idea for your next kitchen refresh.",
+        "Looking for kitchen ideas that actually help? This {title} is a popular pick with thousands of orders. Save it for later.",
+        "Small kitchen upgrade, big difference. {title} is a simple way to keep your kitchen neat and make prep easier.",
+        "Kitchen idea worth saving: {title}. Tap through to see details, photos and reviews."
+      ],
+      "hashtags": [
+        "#kitchengadgets",
+        "#kitchenorganization",
+        "#homefinds",
+        "#kitchenideas"
+      ]
+    }
+  ]
+}
