@@ -1,0 +1,78 @@
+name: Make pins
+
+# 10 pins a day in three batches of 3, 3 and 4, at uneven times (UTC) so it looks natural.
+# GitHub can start scheduled runs a few minutes late. To change a time, edit the cron line AND
+# the matching line in the LIMIT expression below (they must be identical).
+on:
+  schedule:
+    - cron: "0 7 * * *"      # batch 1: 3 pins
+    - cron: "30 12 * * *"    # batch 2: 3 pins
+    - cron: "0 19 * * *"     # batch 3: 4 pins
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (build images only, send nothing to Make)"
+        type: boolean
+        default: true
+      roundup:
+        description: "Make ONE '13 best...' roundup pin instead of single pins (needs roundup.site_base_url in config.json)"
+        type: boolean
+        default: false
+      limit:
+        description: "Pins this run (blank = 3)"
+        required: false
+        default: "3"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pins
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Build pins
+        env:
+          AE_APP_KEY: ${{ secrets.AE_APP_KEY }}
+          AE_APP_SECRET: ${{ secrets.AE_APP_SECRET }}
+          AE_TRACKING_ID: ${{ secrets.AE_TRACKING_ID }}
+          MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
+          ROUNDUP: ${{ github.event_name == 'workflow_dispatch' && inputs.roundup || 'false' }}
+          DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          # scheduled runs: 7:00 -> 3, 12:30 -> 3, 19:00 -> 4 (total 10). Manual runs: the box you type in.
+          LIMIT: ${{ inputs.limit || (github.event.schedule == '0 7 * * *' && '3') || (github.event.schedule == '30 12 * * *' && '3') || (github.event.schedule == '0 19 * * *' && '4') || '3' }}
+        run: |
+          ARGS=""
+          if [ "$DRY" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ "$ROUNDUP" = "true" ]; then ARGS="$ARGS --roundup"
+          elif [ -n "$LIMIT" ]; then ARGS="$ARGS --limit $LIMIT"; fi
+          python pipeline.py $ARGS
+
+      - name: Save preview images (to check the designs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pin-previews
+          path: out/
+          retention-days: 3
+          if-no-files-found: ignore
+
+      - name: Remember which products were posted (and publish roundup pages)
+        if: always()
+        run: |
+          git config user.name "pin-bot"
+          git config user.email "pin-bot@users.noreply.github.com"
+          git add posted.json
+          [ -d docs ] && git add docs || true
+          git diff --cached --quiet || (git commit -m "Update posted products" && git push)

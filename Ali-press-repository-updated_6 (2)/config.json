@@ -1,0 +1,102 @@
+{
+  "settings": {
+    "pins_per_run": 3,
+    "daily_cap": 10,
+    "delay_seconds": 8,
+    "max_pages": 2,
+    "page_size": 50,
+    "currency": "USD",
+    "language": "EN",
+    "ship_to_country": "",
+    "video_pins": true,
+    "video_max_mb": 25,
+    "max_videos_per_day": 1
+  },
+  "logo": {
+    "script": "Kitchen",
+    "caps": "GADGETS",
+    "color": "#C9768C",
+    "accent": "#E8B4C0"
+  },
+  "niches": [
+    {
+      "name": "kitchen",
+      "board_name": "Kitchen Gadgets & Finds",
+      "keywords": [
+        "kitchen organizer",
+        "silicone kitchen utensils",
+        "spice rack",
+        "vegetable chopper",
+        "reusable food storage",
+        "kitchen gadgets",
+        "drawer organizer kitchen",
+        "countertop storage rack",
+        "sink organizer",
+        "food storage containers"
+      ],
+      "filters": {
+        "min_good_rate": 92,
+        "min_orders": 300,
+        "min_commission": 5,
+        "min_price": 2,
+        "max_price": 40
+      },
+      "exclude_words": [],
+      "description_templates": [
+        "{title}: a handy kitchen find that makes everyday cooking and tidying easier. Save this idea for your next kitchen refresh.",
+        "Looking for kitchen ideas that actually help? This {title} is a popular pick with thousands of orders. Save it for later.",
+        "Small kitchen upgrade, big difference. {title} is a simple way to keep your kitchen neat and make prep easier.",
+        "Kitchen idea worth saving: {title}. Tap through to see details, photos and reviews."
+      ],
+      "hashtags": [
+        "#kitchengadgets",
+        "#kitchenorganization",
+        "#homefinds",
+        "#kitchenideas"
+      ],
+      "title_keyword": "kitchen",
+      "title_suffix": " - Kitchen Find",
+      "benefit_lines": [
+        "A simple way to keep your kitchen tidy and make everyday cooking easier.",
+        "A handy upgrade that saves time and counter space.",
+        "Well reviewed and popular with hundreds of buyers.",
+        "Small change, big difference in how your kitchen works.",
+        "An easy fix for a cluttered kitchen."
+      ],
+      "cta_lines": [
+        "Save this idea for later.",
+        "Tap through to see details and reviews.",
+        "Pin it to your kitchen ideas board."
+      ],
+      "product_nouns": [
+        "organizer",
+        "rack",
+        "chopper",
+        "container",
+        "containers",
+        "utensils",
+        "holder",
+        "storage",
+        "dispenser",
+        "basket",
+        "tray",
+        "shelf",
+        "cutter",
+        "slicer",
+        "peeler",
+        "grater",
+        "mat",
+        "brush",
+        "jar",
+        "box",
+        "spatula"
+      ]
+    }
+  ],
+  "roundup": {
+    "count": 13,
+    "headline": "Best kitchen gadgets",
+    "subline": "you'll actually use",
+    "site_base_url": ""
+  }
+}
