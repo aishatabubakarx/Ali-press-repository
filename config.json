@@ -18,7 +18,11 @@
     "script": "Homey",
     "caps": "HOME & KITCHEN",
     "color": "#C9768C",
-    "accent": "#E8B4C0"
+    "accent": "#E8B4C0",
+    "style": "dark_tab",
+    "outline_color": "#3E1A2A",
+    "scrim_color": "#2A1019",
+    "margin": 0
   },
   "niches": [
     {
