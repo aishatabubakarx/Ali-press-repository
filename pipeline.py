@@ -330,43 +330,85 @@ def feather(size, edge):
     return m.filter(ImageFilter.GaussianBlur(edge / 2))
 
 
-def scrim(top, strength=225):
+def scrim(top, strength=225, color=(18, 18, 22)):
     """Dark gradient over the bottom of the pin so white text stays readable."""
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
     for y in range(top, H):
         a = int(strength * ((y - top) / (H - top)) ** 1.4)
-        d.line((0, y, W, y), fill=(18, 18, 22, a))
+        d.line((0, y, W, y), fill=tuple(color) + (a,))
     return layer
 
 
 _logo_cache = {}
 
 
+def _hex_rgb(c):
+    c = c.lstrip("#")
+    return tuple(int(c[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _outlined(lg, outline, grow, shadow=True):
+    """Lettering with a solid outline (and a soft drop shadow) so it reads on any photo."""
+    pad = grow + 8
+    base = Image.new("RGBA", (lg.width + pad * 2, lg.height + pad * 2), (0, 0, 0, 0))
+    base.alpha_composite(lg, (pad, pad))
+    alpha = base.split()[3]
+    ring = alpha.filter(ImageFilter.MaxFilter(grow * 2 + 1)).filter(ImageFilter.GaussianBlur(0.6))
+    out = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    if shadow:
+        sh = ring.filter(ImageFilter.GaussianBlur(4)).point(lambda v: int(v * 0.55))
+        shadow_layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        shadow_layer.paste((0, 0, 0, 255), (0, 3), sh)
+        out.alpha_composite(shadow_layer)
+    out.paste(outline + (255,), (0, 0), ring)
+    out.alpha_composite(base)
+    return out.crop(out.getbbox())
+
+
 def logo_stamp(cfg_logo, width=210):
-    """Small brand tab for the pin's top-left corner: the wordmark on a clean white tab that sits
-    flush against the edges (square on the outside, rounded on the inside), so it reads on any photo."""
+    """Small brand mark for the pin's top-left corner. Styles (config.json > logo > style):
+      "outline"  white lettering with a deep plum outline, no box (default)
+      "dark_tab" cream lettering on a deep plum tab flush with the corner
+      "sticker"  rose lettering with a thick white outline
+    """
+    cfg_logo = cfg_logo or {}
     key = (json.dumps(cfg_logo, sort_keys=True), width)
-    if key not in _logo_cache:
-        deep = dict(cfg_logo or {})                       # a deeper rose than the brand colour, for contrast
-        c = deep.get("color", "#C9768C").lstrip("#")
-        deep["color"] = "#%02X%02X%02X" % tuple(int(int(c[i:i + 2], 16) * 0.78) for i in (0, 2, 4))
-        lg = load_logo(deep)
+    if key in _logo_cache:
+        return _logo_cache[key]
+    style = cfg_logo.get("style", "outline")
+    plum = _hex_rgb(cfg_logo.get("outline_color", "#3E1A2A"))
+    rose = cfg_logo.get("color", "#C9768C")
+    if style == "sticker":
+        deep = "#%02X%02X%02X" % tuple(int(v * 0.8) for v in _hex_rgb(rose))
+        lg = load_logo({**cfg_logo, "color": deep, "accent": deep})
+        lg = lg.resize((width, int(lg.height * width / lg.width)), Image.LANCZOS)
+        st = _outlined(lg, (255, 255, 255), 5)
+        tab = Image.new("RGBA", (st.width + 16, st.height + 16), (0, 0, 0, 0))
+        tab.alpha_composite(st, (8, 8))
+    elif style == "dark_tab":
+        lg = load_logo({**cfg_logo, "color": "#FFFFFF", "accent": "#F3C6D3"})
         pad = 12
         lg = lg.resize((width, int(lg.height * width / lg.width)), Image.LANCZOS)
         tw, th = lg.width + pad * 2, lg.height + pad * 2
-        scale = 4                                          # draw big, shrink for smooth corners
-        tab = Image.new("RGBA", (tw * scale, th * scale), (0, 0, 0, 0))
-        r = 16 * scale
-        ImageDraw.Draw(tab).rounded_rectangle((-r, -r, tw * scale - 1, th * scale - 1), radius=r,
-                                              fill=(255, 255, 255, 240))
+        k = 4
+        tab = Image.new("RGBA", (tw * k, th * k), (0, 0, 0, 0))
+        r = 16 * k
+        ImageDraw.Draw(tab).rounded_rectangle((-r, -r, tw * k - 1, th * k - 1), radius=r, fill=plum + (235,))
         tab = tab.resize((tw, th), Image.LANCZOS)
         tab.alpha_composite(lg, (pad, pad))
-        _logo_cache[key] = tab
-    return _logo_cache[key]
+    else:                                              # "outline"
+        lg = load_logo({**cfg_logo, "color": "#FFFFFF", "accent": "#F6D5DE"})
+        lg = lg.resize((width, int(lg.height * width / lg.width)), Image.LANCZOS)
+        st = _outlined(lg, plum, 4)
+        tab = Image.new("RGBA", (st.width + 16, st.height + 16), (0, 0, 0, 0))
+        tab.alpha_composite(st, (8, 8))
+    _logo_cache[key] = tab
+    return tab
 
 
 def make_pin(product_img, headline, logo_cfg=None):
+    logo_cfg = logo_cfg or {}
     """Image-first pin: the product photo fills the full width and is the hero.
     Text sits on a dark gradient at the bottom, with the small brand tab in the top-left corner."""
     col, plain = edge_color(product_img)
@@ -381,10 +423,10 @@ def make_pin(product_img, headline, logo_cfg=None):
         hero = ImageOps.fit(product_img, (W, 1220), Image.LANCZOS)
     y = 70 + (1220 - hero.height) // 2
     canvas.paste(hero, (0, y), feather(hero.size, 40))
-    canvas = Image.alpha_composite(canvas.convert("RGBA"), scrim(1010)).convert("RGB")
+    canvas = Image.alpha_composite(canvas.convert("RGBA"), scrim(1010, color=_hex_rgb(logo_cfg.get('scrim_color', '#2A1019')))).convert("RGB")
     stamp = logo_stamp(logo_cfg)
     canvas = canvas.convert("RGBA")
-    canvas.alpha_composite(stamp, (0, 0))
+    canvas.alpha_composite(stamp, (logo_cfg.get("margin", 6), logo_cfg.get("margin", 6)))
     canvas = canvas.convert("RGB")
     d = ImageDraw.Draw(canvas)
     for size in (84, 74, 66, 58, 50):                  # headline: shrink until it fits in 2 lines
@@ -396,9 +438,10 @@ def make_pin(product_img, headline, logo_cfg=None):
     lh = int(size * 1.15)
     y = 1385 - lh * len(lines)
     for ln in lines:
-        d.text((W / 2, y), ln, font=hf, fill="white", anchor="ma")
+        d.text((W / 2, y + 3), ln, font=hf, fill=(0, 0, 0), anchor="ma", stroke_width=7, stroke_fill=(0, 0, 0))
+        d.text((W / 2, y), ln, font=hf, fill="white", anchor="ma", stroke_width=5, stroke_fill=_hex_rgb(logo_cfg.get("outline_color", "#3E1A2A")))
         y += lh
-    d.text((W / 2, 1440), "SAVE THIS FOR LATER", font=font(28), fill=(255, 255, 255, 190), anchor="mm")
+    d.text((W / 2, 1440), "SAVE THIS FOR LATER", font=font(28), fill=(255, 255, 255), anchor="mm", stroke_width=3, stroke_fill=_hex_rgb(logo_cfg.get("outline_color", "#3E1A2A")))
     return canvas
 
 
