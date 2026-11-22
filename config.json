@@ -3,18 +3,20 @@
     "pins_per_run": 3,
     "daily_cap": 10,
     "delay_seconds": 8,
-    "max_pages": 2,
+    "max_pages": 3,
     "page_size": 50,
     "currency": "USD",
     "language": "EN",
     "ship_to_country": "",
     "video_pins": true,
     "video_max_mb": 25,
-    "max_videos_per_day": 1
+    "max_videos_per_day": 1,
+    "max_premium_per_day": 2,
+    "premium_per_run": 1
   },
   "logo": {
-    "script": "Kitchen",
-    "caps": "GADGETS",
+    "script": "Homey",
+    "caps": "HOME & KITCHEN",
     "color": "#C9768C",
     "accent": "#E8B4C0"
   },
@@ -23,28 +25,38 @@
       "name": "kitchen",
       "board_name": "Kitchen Gadgets & Finds",
       "keywords": [
-        "kitchen organizer",
-        "silicone kitchen utensils",
-        "spice rack",
-        "vegetable chopper",
-        "reusable food storage",
-        "kitchen gadgets",
-        "drawer organizer kitchen",
-        "countertop storage rack",
-        "sink organizer",
-        "food storage containers"
+        "kitchen organizer set",
+        "cookware set",
+        "knife set with block",
+        "pots and pans set",
+        "kitchen storage cabinet",
+        "kitchen island cart",
+        "bakers rack",
+        "air fryer",
+        "food storage container set",
+        "dinnerware set",
+        "bamboo drawer organizer set",
+        "pantry shelving unit",
+        "nonstick cookware set",
+        "bakeware set",
+        "kitchen utensil set",
+        "glass food storage set",
+        "kitchen shelf rack",
+        "dish drying rack set",
+        "spice rack set",
+        "stainless steel kitchen rack"
       ],
       "filters": {
-        "min_good_rate": 92,
-        "min_orders": 300,
+        "min_good_rate": 90,
+        "min_orders": 500,
         "min_commission": 5,
-        "min_price": 2,
-        "max_price": 40
+        "min_price": 80,
+        "max_price": 300
       },
       "exclude_words": [],
       "description_templates": [
         "{title}: a handy kitchen find that makes everyday cooking and tidying easier. Save this idea for your next kitchen refresh.",
-        "Looking for kitchen ideas that actually help? This {title} is a popular pick with thousands of orders. Save it for later.",
+        "Looking for kitchen ideas that actually help? This {title} is a well-reviewed pick from real buyers. Save it for later.",
         "Small kitchen upgrade, big difference. {title} is a simple way to keep your kitchen neat and make prep easier.",
         "Kitchen idea worth saving: {title}. Tap through to see details, photos and reviews."
       ],
@@ -59,7 +71,7 @@
       "benefit_lines": [
         "A simple way to keep your kitchen tidy and make everyday cooking easier.",
         "A handy upgrade that saves time and counter space.",
-        "Well reviewed and popular with hundreds of buyers.",
+        "Well reviewed and popular with real buyers.",
         "Small change, big difference in how your kitchen works.",
         "An easy fix for a cluttered kitchen."
       ],
@@ -89,8 +101,40 @@
         "brush",
         "jar",
         "box",
-        "spatula"
-      ]
+        "spatula",
+        "set",
+        "sets",
+        "kit",
+        "bundle",
+        "cabinet",
+        "cart",
+        "trolley",
+        "island",
+        "stand",
+        "cookware",
+        "bakeware",
+        "pan",
+        "pans",
+        "pot",
+        "pots",
+        "knife",
+        "knives",
+        "fryer"
+      ],
+      "premium_keywords": [
+        "kitchen trolley",
+        "coffee bar cabinet",
+        "microwave stand",
+        "kitchen island with storage",
+        "sideboard buffet cabinet"
+      ],
+      "premium_filters": {
+        "min_good_rate": 92,
+        "min_orders": 100,
+        "min_commission": 5,
+        "min_price": 300.01,
+        "max_price": 800
+      }
     }
   ],
   "roundup": {
