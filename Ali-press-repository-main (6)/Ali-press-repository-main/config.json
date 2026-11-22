@@ -1,0 +1,194 @@
+{
+  "settings": {
+    "pins_per_run": 3,
+    "daily_cap": 10,
+    "delay_seconds": 8,
+    "max_pages": 3,
+    "page_size": 50,
+    "currency": "USD",
+    "language": "EN",
+    "ship_to_country": "",
+    "video_pins": true,
+    "video_max_mb": 25,
+    "max_videos_per_day": 1,
+    "max_premium_per_day": 2,
+    "premium_per_run": 1
+  },
+  "logo": {
+    "script": "Homey",
+    "caps": "HOME & KITCHEN",
+    "color": "#C9768C",
+    "accent": "#E8B4C0",
+    "style": "dark_tab",
+    "outline_color": "#3E1A2A",
+    "scrim_color": "#2A1019",
+    "margin": 0
+  },
+  "niches": [
+    {
+      "name": "kitchen",
+      "board_name": "Kitchen Gadgets & Finds",
+      "keywords": [
+        "kitchen organizer set",
+        "cookware set",
+        "knife set with block",
+        "pots and pans set",
+        "kitchen storage cabinet",
+        "kitchen island cart",
+        "bakers rack",
+        "air fryer",
+        "food storage container set",
+        "dinnerware set",
+        "bamboo drawer organizer set",
+        "pantry shelving unit",
+        "nonstick cookware set",
+        "bakeware set",
+        "kitchen utensil set",
+        "glass food storage set",
+        "kitchen shelf rack",
+        "dish drying rack set",
+        "spice rack set",
+        "stainless steel kitchen rack"
+      ],
+      "filters": {
+        "min_good_rate": 90,
+        "min_orders": 500,
+        "min_commission": 5,
+        "min_price": 80,
+        "max_price": 300
+      },
+      "exclude_words": [],
+      "description_templates": [
+        "{title}: a handy kitchen find that makes everyday cooking and tidying easier. Save this idea for your next kitchen refresh.",
+        "Looking for kitchen ideas that actually help? This {title} is a well-reviewed pick from real buyers. Save it for later.",
+        "Small kitchen upgrade, big difference. {title} is a simple way to keep your kitchen neat and make prep easier.",
+        "Kitchen idea worth saving: {title}. Tap through to see details, photos and reviews."
+      ],
+      "hashtags": [
+        "#kitchengadgets",
+        "#kitchenorganization",
+        "#homefinds",
+        "#kitchenideas"
+      ],
+      "title_keyword": "kitchen",
+      "title_suffix": " - Kitchen Find",
+      "benefit_lines": [
+        "A simple way to keep your kitchen tidy and make everyday cooking easier.",
+        "A handy upgrade that saves time and counter space.",
+        "Well reviewed and popular with real buyers.",
+        "Small change, big difference in how your kitchen works.",
+        "An easy fix for a cluttered kitchen."
+      ],
+      "cta_lines": [
+        "Save this idea for later.",
+        "Tap through to see details and reviews.",
+        "Pin it to your kitchen ideas board."
+      ],
+      "product_nouns": [
+        "organizer",
+        "rack",
+        "chopper",
+        "container",
+        "containers",
+        "utensils",
+        "holder",
+        "storage",
+        "dispenser",
+        "basket",
+        "tray",
+        "shelf",
+        "cutter",
+        "slicer",
+        "peeler",
+        "grater",
+        "mat",
+        "brush",
+        "jar",
+        "box",
+        "spatula",
+        "set",
+        "sets",
+        "kit",
+        "bundle",
+        "cabinet",
+        "cart",
+        "trolley",
+        "island",
+        "stand",
+        "cookware",
+        "bakeware",
+        "pan",
+        "pans",
+        "pot",
+        "pots",
+        "knife",
+        "knives",
+        "fryer"
+      ],
+      "premium_keywords": [
+        "kitchen trolley",
+        "coffee bar cabinet",
+        "microwave stand",
+        "kitchen island with storage",
+        "sideboard buffet cabinet"
+      ],
+      "premium_filters": {
+        "min_good_rate": 92,
+        "min_orders": 100,
+        "min_commission": 5,
+        "min_price": 300.01,
+        "max_price": 800
+      },
+      "bulk_keywords": [
+        "kitchen organization",
+        "kitchen storage ideas",
+        "kitchen decor",
+        "home finds",
+        "kitchen essentials",
+        "small kitchen ideas"
+      ]
+    }
+  ],
+  "roundup": {
+    "count": 13,
+    "headline": "Best kitchen gadgets",
+    "subline": "you'll actually use",
+    "site_base_url": ""
+  },
+  "bulk": {
+    "batch_size": 200,
+    "pins_per_day": 15,
+    "window_start_utc": "10:00",
+    "window_hours": 14,
+    "max_days_ahead": 30,
+    "premium_share": 0.2,
+    "keep_days": 45,
+    "public_base_url": "",
+    "out_size": [
+      900,
+      1600
+    ],
+    "ai": {
+      "enabled": true,
+      "base_url": "https://api.meta.ai/v1",
+      "model": "muse-image-1.0",
+      "size": "1080x1920",
+      "workers": 4,
+      "retries": 3
+    },
+    "disclosures": [
+      "Heads up: I may earn a small commission if you shop through my link 🤍",
+      "Psst, my link may earn me a little commission 💛",
+      "Quick note: this is an affiliate link, so I may earn a small commission 🌿",
+      "FYI, I may get a tiny commission when you buy through my link ✨",
+      "Affiliate link: a small commission may come my way, at no extra cost to you 💕",
+      "Note: I may earn a small commission from my link 🧡",
+      "Buying through my link may earn me a small commission 🤍",
+      "Just so you know, I earn a small commission from purchases through my link 💛",
+      "Commission note: my link may earn me a little something 🌸",
+      "Full transparency: I may earn a small commission through my link ✨",
+      "This is an affiliate link, so I may earn a small commission 🍋",
+      "I may earn a small commission if you buy through my link, no extra cost to you 💛"
+    ]
+  }
+}

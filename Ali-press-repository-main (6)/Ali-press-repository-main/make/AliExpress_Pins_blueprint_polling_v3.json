@@ -1,0 +1,1316 @@
+{
+  "name": "AliExpress Pins - GitHub Webhook, Gemini (sees image), Pinterest (image + video) v3",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": null,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0,
+          "name": "Receive Product from GitHub",
+          "messages": [
+            {
+              "category": "setupreq",
+              "severity": "error",
+              "message": "Webhook: Value must not be empty."
+            }
+          ]
+        },
+        "parameters": [
+          {
+            "name": "hook",
+            "type": "hook:gateway-webhook",
+            "label": "Webhook",
+            "required": true
+          },
+          {
+            "name": "maxResults",
+            "type": "number",
+            "label": "Maximum number of results"
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "module": "gemini-ai:uploadAFile",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": 14591668
+      },
+      "filter": null,
+      "mapper": {
+        "file_data": "{{toBinary(1.image_base64; base64)}}",
+        "file_name": "{{1.product_id}}.jpg",
+        "useFileSearchStore": false
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0,
+          "name": "Upload Pin Image to Gemini"
+        },
+        "restore": {
+          "parameters": {
+            "__IMTCONN__": {
+              "label": "Aishat's Gemini AI connection"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "__IMTCONN__",
+            "type": "account:gemini-ai-q9zyjp",
+            "label": "Connection",
+            "required": true
+          }
+        ],
+        "expect": [
+          {
+            "name": "file_name",
+            "type": "text",
+            "label": "Name",
+            "required": true,
+            "semantic": "file:name"
+          },
+          {
+            "name": "file_data",
+            "type": "buffer",
+            "label": "Data",
+            "required": true,
+            "semantic": "file:data"
+          },
+          {
+            "name": "useFileSearchStore",
+            "type": "boolean",
+            "label": "Use File Search Store",
+            "default": false,
+            "required": false
+          }
+        ]
+      },
+      "onerror": [
+        {
+          "id": 15,
+          "module": "builtin:Resume",
+          "version": 1,
+          "mapper": {},
+          "metadata": {
+            "designer": {
+              "x": 300,
+              "y": 300,
+              "name": "Upload failed: use no-AI text"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "module": "gemini-ai:createACompletionGeminiPro",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": 14591668
+      },
+      "mapper": {
+        "model": "gemini-2.5-flash",
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "type": "file",
+                "file_data": {
+                  "file_uri": "{{8.uri}}",
+                  "mime_type": "{{1.image_content_type}}"
+                }
+              },
+              {
+                "type": "text",
+                "text": "You write Pinterest pin copy. Pin type: {{1.pin_type}} (image = one AliExpress product, video = one product shown in a video, roundup = a collage list of several products). Product name from the store: {{1.product_title}}. Category: {{1.niche}}. Look at the attached pin image and describe what you can actually see, together with what the product name says. Return exactly two lines and nothing else, with no blank line between them. Line 1: a catchy, keyword-rich Pinterest title, maximum 90 characters. Line 2: an engaging description of 2 sentences, maximum 280 characters, saying what it is and how it helps, ending with a gentle invitation to save the pin. Do not use labels, numbering, hashtags, emojis, quotation marks, prices, or claims about discounts or shipping. Do not invent features that are not visible in the image or stated in the product name."
+              }
+            ]
+          }
+        ]
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0,
+          "name": "Gemini Looks at Image, Writes Title and Description"
+        },
+        "restore": {
+          "parameters": {
+            "__IMTCONN__": {
+              "label": "Aishat's Gemini AI connection"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "__IMTCONN__",
+            "type": "account:gemini-ai-q9zyjp",
+            "label": "Connection",
+            "required": true
+          }
+        ],
+        "expect": [
+          {
+            "name": "model",
+            "type": "select",
+            "label": "AI Model",
+            "dynamic": true,
+            "grouped": true,
+            "required": true
+          },
+          {
+            "name": "contents",
+            "spec": [
+              {
+                "name": "role",
+                "type": "select",
+                "label": "Role",
+                "required": true,
+                "validate": {
+                  "enum": [
+                    "user",
+                    "model"
+                  ]
+                }
+              },
+              {
+                "name": "parts",
+                "spec": [
+                  {
+                    "name": "type",
+                    "type": "select",
+                    "label": "Message Type",
+                    "required": true,
+                    "validate": {
+                      "enum": [
+                        "text",
+                        "file",
+                        "functionCall",
+                        "functionResponse"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "thoughtSignature",
+                    "type": "text",
+                    "label": "Thought Signature"
+                  }
+                ],
+                "type": "array",
+                "label": "Parts",
+                "required": true
+              }
+            ],
+            "type": "array",
+            "label": "Messages",
+            "required": true
+          },
+          {
+            "name": "system_instruction",
+            "spec": [
+              {
+                "name": "parts",
+                "spec": {
+                  "spec": [
+                    {
+                      "name": "text",
+                      "type": "text",
+                      "label": "Value"
+                    }
+                  ],
+                  "type": "collection",
+                  "label": "Prompt"
+                },
+                "type": "array",
+                "label": "Prompts",
+                "labels": {
+                  "add": "Add a System Prompt"
+                }
+              }
+            ],
+            "type": "collection",
+            "label": "System Instructions"
+          },
+          {
+            "name": "safetySettings",
+            "spec": [
+              {
+                "name": "category",
+                "type": "select",
+                "label": "Category",
+                "validate": {
+                  "enum": [
+                    "HARM_CATEGORY_HARASSMENT",
+                    "HARM_CATEGORY_HATE_SPEECH",
+                    "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "HARM_CATEGORY_DANGEROUS_CONTENT"
+                  ]
+                }
+              },
+              {
+                "name": "threshold",
+                "type": "select",
+                "label": "Threshold",
+                "validate": {
+                  "enum": [
+                    "BLOCK_LOW_AND_ABOVE",
+                    "BLOCK_MEDIUM_AND_ABOVE",
+                    "BLOCK_ONLY_HIGH",
+                    "BLOCK_NONE"
+                  ]
+                }
+              }
+            ],
+            "type": "array",
+            "label": "Safety Settings",
+            "advanced": true,
+            "required": false
+          },
+          {
+            "name": "generationConfig",
+            "spec": [
+              {
+                "name": "stopSequences",
+                "spec": {
+                  "type": "text",
+                  "label": "Stop Sequence"
+                },
+                "type": "array",
+                "label": "Stop Sequences",
+                "advanced": true,
+                "required": false
+              },
+              {
+                "name": "responseModalities",
+                "type": "select",
+                "label": "Response Modalities",
+                "advanced": false,
+                "multiple": true,
+                "required": false,
+                "validate": {
+                  "enum": [
+                    "text",
+                    "image"
+                  ]
+                }
+              },
+              {
+                "name": "maxOutputTokens",
+                "type": "number",
+                "label": "Max Output Tokens",
+                "advanced": true,
+                "required": false
+              },
+              {
+                "name": "temperature",
+                "type": "number",
+                "label": "Temperature",
+                "advanced": true,
+                "required": false,
+                "validate": {
+                  "max": 1,
+                  "min": 0
+                }
+              },
+              {
+                "name": "topP",
+                "type": "number",
+                "label": "Top P",
+                "advanced": true,
+                "required": false,
+                "validate": {
+                  "max": 1,
+                  "min": 0
+                }
+              },
+              {
+                "name": "topK",
+                "type": "number",
+                "label": "Top K",
+                "advanced": true,
+                "required": false
+              },
+              {
+                "name": "thinkingConfig",
+                "spec": [
+                  {
+                    "name": "thinkingBudget",
+                    "type": "number",
+                    "label": "Thinking Budget",
+                    "advanced": true,
+                    "required": false
+                  },
+                  {
+                    "name": "include_thoughts",
+                    "type": "boolean",
+                    "label": "Include Thoughts",
+                    "advanced": true,
+                    "required": false
+                  },
+                  {
+                    "name": "thinking_level",
+                    "type": "select",
+                    "label": "Thinking Level",
+                    "validate": {
+                      "enum": [
+                        "low",
+                        "high"
+                      ]
+                    }
+                  }
+                ],
+                "type": "collection",
+                "label": "Thinking Config",
+                "advanced": true
+              },
+              {
+                "name": "mediaResolution",
+                "type": "select",
+                "label": "Media Resolution",
+                "validate": {
+                  "enum": [
+                    "media_resolution_low",
+                    "media_resolution_medium",
+                    "media_resolution_high"
+                  ]
+                }
+              },
+              {
+                "name": "imageConfig",
+                "spec": [
+                  {
+                    "name": "imageSize",
+                    "type": "select",
+                    "label": "Image Size",
+                    "validate": {
+                      "enum": [
+                        "1K",
+                        "2K",
+                        "4K"
+                      ]
+                    }
+                  }
+                ],
+                "type": "collection",
+                "label": "Image Configuration"
+              },
+              {
+                "name": "responseMimeType",
+                "type": "select",
+                "label": "Response Format",
+                "dynamic": true,
+                "advanced": true,
+                "required": false,
+                "validate": {
+                  "enum": [
+                    "application/json"
+                  ]
+                }
+              }
+            ],
+            "type": "collection",
+            "label": "Generation configurations",
+            "advanced": false
+          },
+          {
+            "name": "tools",
+            "type": "any",
+            "label": "Tools",
+            "advanced": true
+          },
+          {
+            "name": "tool_config",
+            "type": "any",
+            "label": "Tool Config",
+            "advanced": true
+          },
+          {
+            "name": "function_declarations_context",
+            "type": "boolean",
+            "label": "Function Declarations Grounding"
+          },
+          {
+            "name": "url_context",
+            "type": "boolean",
+            "label": "URL Context",
+            "required": false
+          },
+          {
+            "name": "google_search_context",
+            "type": "boolean",
+            "label": "Google Search Grounding",
+            "required": false
+          },
+          {
+            "name": "code_execution",
+            "type": "boolean",
+            "label": "Code Execution",
+            "required": false
+          },
+          {
+            "name": "google_maps_context",
+            "type": "boolean",
+            "label": "Google Maps Grounding",
+            "required": false
+          },
+          {
+            "name": "file_search_store_context",
+            "type": "boolean",
+            "label": "File Search Store Context",
+            "required": false
+          },
+          {
+            "name": "serviceTier",
+            "type": "select",
+            "label": "Inference Service Tier",
+            "dynamic": true,
+            "advanced": true,
+            "validate": {
+              "enum": [
+                "priority",
+                "flex"
+              ]
+            }
+          }
+        ]
+      },
+      "onerror": [
+        {
+          "id": 4,
+          "module": "builtin:Resume",
+          "version": 1,
+          "mapper": {},
+          "metadata": {
+            "designer": {
+              "x": 300,
+              "y": 300,
+              "name": "Gemini failed: use no-AI text"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "mapper": null,
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 0,
+          "name": "Image pin or video pin?"
+        }
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 3,
+              "module": "pinterest:createPin",
+              "version": 2,
+              "parameters": {
+                "__IMTCONN__": 14591682
+              },
+              "filter": {
+                "name": "Image pins (not video)",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{1.pin_type}}",
+                      "b": "video",
+                      "o": "text:notequal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "media_source": {
+                  "source_type": "image_base64",
+                  "content_type": "{{1.image_content_type}}",
+                  "data": "{{toBinary(1.image_base64; base64)}}"
+                },
+                "board_id": "",
+                "title": "{{ifempty(trim(get(split(2.candidates[1].content.parts[1].text; newline); 1)); 1.title)}}",
+                "description": "{{ifempty(trim(get(split(2.candidates[1].content.parts[1].text; newline); 2)); 1.description_core)}} {{1.hashtags}} {{1.disclosure}}",
+                "link": "{{1.link}}",
+                "alt_text": "{{1.alt_text}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": -150,
+                  "name": "Publish Pin with Affiliate Link",
+                  "messages": [
+                    {
+                      "category": "setupreq",
+                      "severity": "error",
+                      "message": "Board: Value must not be empty."
+                    }
+                  ]
+                },
+                "restore": {
+                  "parameters": {
+                    "__IMTCONN__": {
+                      "label": "Aishat's pinterest connection",
+                      "data": {
+                        "scoped": "true",
+                        "connection": "pinterest2"
+                      }
+                    }
+                  },
+                  "expect": {
+                    "media_source": {
+                      "nested": {
+                        "source_type": {
+                          "mode": "chose",
+                          "label": "Image Base64"
+                        },
+                        "content_type": {
+                          "mode": "edit"
+                        },
+                        "is_standard": {
+                          "mode": "chose"
+                        }
+                      }
+                    },
+                    "parent_pin_id": {
+                      "mode": "chose",
+                      "label": "Empty"
+                    },
+                    "ad_account_id": {
+                      "mode": "edit"
+                    },
+                    "board_section_id": {
+                      "mode": "edit"
+                    }
+                  }
+                },
+                "parameters": [
+                  {
+                    "name": "__IMTCONN__",
+                    "type": "account:pinterest2",
+                    "label": "Connection",
+                    "required": true
+                  }
+                ],
+                "expect": [
+                  {
+                    "name": "media_source",
+                    "type": "collection",
+                    "label": "Media Source",
+                    "required": true,
+                    "spec": [
+                      {
+                        "name": "source_type",
+                        "type": "select",
+                        "label": "Source Type",
+                        "required": true,
+                        "validate": {
+                          "enum": [
+                            "video_id",
+                            "image_url",
+                            "multiple_image_urls",
+                            "image_base64",
+                            "multiple_image_base64"
+                          ]
+                        }
+                      },
+                      {
+                        "name": "content_type",
+                        "type": "select",
+                        "label": "Content Type",
+                        "required": true,
+                        "validate": {
+                          "enum": [
+                            "image/jpeg",
+                            "image/png"
+                          ]
+                        }
+                      },
+                      {
+                        "name": "data",
+                        "type": "buffer",
+                        "label": "File Data",
+                        "required": true
+                      },
+                      {
+                        "name": "is_standard",
+                        "type": "boolean",
+                        "label": "Is Standard"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "board_id",
+                    "type": "select",
+                    "label": "Board",
+                    "required": true
+                  },
+                  {
+                    "name": "title",
+                    "type": "text",
+                    "label": "Pin Name"
+                  },
+                  {
+                    "name": "description",
+                    "type": "text",
+                    "label": "Description",
+                    "validate": {
+                      "max": 800
+                    }
+                  },
+                  {
+                    "name": "link",
+                    "type": "url",
+                    "label": "Link"
+                  },
+                  {
+                    "name": "alt_text",
+                    "type": "text",
+                    "label": "Alternative Text"
+                  },
+                  {
+                    "name": "dominant_color",
+                    "type": "color",
+                    "label": "Dominant Color"
+                  },
+                  {
+                    "name": "parent_pin_id",
+                    "type": "select",
+                    "label": "Parent Pin"
+                  },
+                  {
+                    "name": "ad_account_id",
+                    "type": "select",
+                    "label": "Ad Account"
+                  },
+                  {
+                    "name": "board_section_id",
+                    "type": "select",
+                    "label": "Board Section"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 6,
+              "module": "pinterest:makeAnApiCall",
+              "version": 2,
+              "parameters": {
+                "__IMTCONN__": 14591682
+              },
+              "filter": {
+                "name": "Video pins only",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{1.pin_type}}",
+                      "b": "video",
+                      "o": "text:equal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "url": "/v5/media",
+                "method": "POST",
+                "headers": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": "{\"media_type\":\"video\"}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": 150,
+                  "name": "Video: ask Pinterest for an upload slot"
+                },
+                "setupValidation": {
+                  "version": 1,
+                  "configuration": "1ead1b771c89ffd9",
+                  "result": {
+                    "valid": true,
+                    "fields": []
+                  }
+                },
+                "restore": {
+                  "parameters": {
+                    "__IMTCONN__": {
+                      "label": "Aishat's pinterest connectionaishatabubakarx",
+                      "data": {
+                        "scoped": "true",
+                        "connection": "pinterest2"
+                      }
+                    }
+                  },
+                  "expect": {
+                    "method": {
+                      "mode": "chose",
+                      "label": "POST"
+                    },
+                    "headers": {
+                      "mode": "chose",
+                      "items": [
+                        null
+                      ]
+                    },
+                    "qs": {
+                      "mode": "chose"
+                    }
+                  }
+                },
+                "parameters": [
+                  {
+                    "name": "__IMTCONN__",
+                    "type": "account:pinterest2",
+                    "label": "Connection",
+                    "required": true
+                  }
+                ],
+                "expect": [
+                  {
+                    "name": "url",
+                    "type": "text",
+                    "label": "URL",
+                    "required": true
+                  },
+                  {
+                    "name": "method",
+                    "type": "select",
+                    "label": "Method",
+                    "required": true,
+                    "validate": {
+                      "enum": [
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "headers",
+                    "type": "array",
+                    "label": "Headers",
+                    "spec": [
+                      {
+                        "name": "key",
+                        "type": "text",
+                        "label": "Key"
+                      },
+                      {
+                        "name": "value",
+                        "type": "text",
+                        "label": "Value"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "qs",
+                    "type": "array",
+                    "label": "Query String",
+                    "spec": [
+                      {
+                        "name": "key",
+                        "type": "text",
+                        "label": "Key"
+                      },
+                      {
+                        "name": "value",
+                        "type": "text",
+                        "label": "Value"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "body",
+                    "type": "any",
+                    "label": "Body"
+                  }
+                ]
+              }
+            },
+            {
+              "id": 7,
+              "module": "http:ActionGetFile",
+              "version": 3,
+              "parameters": {
+                "handleErrors": true,
+                "useNewZLibDeCompress": true
+              },
+              "mapper": {
+                "url": "{{1.video_url}}",
+                "serializeUrl": false,
+                "method": "get",
+                "headers": [
+                  {
+                    "name": "User-Agent",
+                    "value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36"
+                  }
+                ],
+                "qs": [],
+                "timeout": "",
+                "useMtls": false,
+                "authUser": "",
+                "authPass": "",
+                "ca": "",
+                "rejectUnauthorized": true,
+                "followRedirect": true,
+                "followAllRedirects": false,
+                "shareCookies": false
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1500,
+                  "y": 150,
+                  "name": "Video: download the product video"
+                }
+              }
+            },
+            {
+              "id": 9,
+              "module": "http:ActionSendData",
+              "version": 3,
+              "parameters": {
+                "handleErrors": true,
+                "useNewZLibDeCompress": true
+              },
+              "mapper": {
+                "url": "{{6.body.upload_url}}",
+                "method": "post",
+                "headers": [],
+                "qs": [],
+                "bodyType": "multipart_form_data",
+                "fields": [
+                  {
+                    "key": "x-amz-date",
+                    "type": "text",
+                    "value": "{{6.body.upload_parameters.`x-amz-date`}}"
+                  },
+                  {
+                    "key": "x-amz-signature",
+                    "type": "text",
+                    "value": "{{6.body.upload_parameters.`x-amz-signature`}}"
+                  },
+                  {
+                    "key": "x-amz-security-token",
+                    "type": "text",
+                    "value": "{{6.body.upload_parameters.`x-amz-security-token`}}"
+                  },
+                  {
+                    "key": "x-amz-algorithm",
+                    "type": "text",
+                    "value": "{{6.body.upload_parameters.`x-amz-algorithm`}}"
+                  },
+                  {
+                    "key": "key",
+                    "type": "text",
+                    "value": "{{6.body.upload_parameters.`key`}}"
+                  },
+                  {
+                    "key": "policy",
+                    "type": "text",
+                    "value": "{{6.body.upload_parameters.`policy`}}"
+                  },
+                  {
+                    "key": "x-amz-credential",
+                    "type": "text",
+                    "value": "{{6.body.upload_parameters.`x-amz-credential`}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "type": "text",
+                    "value": "{{6.body.upload_parameters.`Content-Type`}}"
+                  },
+                  {
+                    "key": "file",
+                    "type": "file",
+                    "data": "{{7.data}}",
+                    "fileName": "{{1.product_id}}.mp4"
+                  }
+                ],
+                "parseResponse": false,
+                "serializeUrl": false,
+                "authUser": "",
+                "authPass": "",
+                "timeout": "",
+                "shareCookies": false,
+                "ca": "",
+                "rejectUnauthorized": true,
+                "followRedirect": true,
+                "followAllRedirects": false,
+                "useQuerystring": false,
+                "gzip": true,
+                "useMtls": false
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1800,
+                  "y": 150,
+                  "name": "Video: upload the video file to Pinterest"
+                }
+              }
+            },
+            {
+              "id": 10,
+              "module": "util:FunctionSleep",
+              "version": 1,
+              "mapper": {
+                "duration": "300"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2100,
+                  "y": 150,
+                  "name": "Video: wait 5 minutes for Pinterest to process"
+                }
+              },
+              "parameters": {}
+            },
+            {
+              "id": 13,
+              "module": "pinterest:makeAnApiCall",
+              "version": 2,
+              "parameters": {
+                "__IMTCONN__": 14591682
+              },
+              "mapper": {
+                "url": "/v5/media/{{6.body.media_id}}",
+                "method": "GET",
+                "headers": [],
+                "qs": []
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2400,
+                  "y": 150,
+                  "name": "Video: check processing status (once)"
+                },
+                "restore": {
+                  "parameters": {
+                    "__IMTCONN__": {
+                      "label": "Aishat's pinterest connectionaishatabubakarx",
+                      "data": {
+                        "scoped": "true",
+                        "connection": "pinterest2"
+                      }
+                    }
+                  },
+                  "expect": {
+                    "method": {
+                      "mode": "chose",
+                      "label": "POST"
+                    },
+                    "headers": {
+                      "mode": "chose"
+                    },
+                    "qs": {
+                      "mode": "chose"
+                    }
+                  }
+                },
+                "parameters": [
+                  {
+                    "name": "__IMTCONN__",
+                    "type": "account:pinterest2",
+                    "label": "Connection",
+                    "required": true
+                  }
+                ],
+                "expect": [
+                  {
+                    "name": "url",
+                    "type": "text",
+                    "label": "URL",
+                    "required": true
+                  },
+                  {
+                    "name": "method",
+                    "type": "select",
+                    "label": "Method",
+                    "required": true,
+                    "validate": {
+                      "enum": [
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "headers",
+                    "type": "array",
+                    "label": "Headers",
+                    "spec": [
+                      {
+                        "name": "key",
+                        "type": "text",
+                        "label": "Key"
+                      },
+                      {
+                        "name": "value",
+                        "type": "text",
+                        "label": "Value"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "qs",
+                    "type": "array",
+                    "label": "Query String",
+                    "spec": [
+                      {
+                        "name": "key",
+                        "type": "text",
+                        "label": "Key"
+                      },
+                      {
+                        "name": "value",
+                        "type": "text",
+                        "label": "Value"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "body",
+                    "type": "any",
+                    "label": "Body"
+                  }
+                ]
+              }
+            },
+            {
+              "id": 11,
+              "module": "pinterest:createPin",
+              "version": 2,
+              "parameters": {
+                "__IMTCONN__": 14591682
+              },
+              "mapper": {
+                "media_source": {
+                  "source_type": "video_id",
+                  "media_id": "{{6.body.media_id}}",
+                  "cover_image_url": "{{1.image_url}}"
+                },
+                "board_id": "",
+                "title": "{{ifempty(trim(get(split(2.candidates[1].content.parts[1].text; newline); 1)); 1.title)}}",
+                "description": "{{ifempty(trim(get(split(2.candidates[1].content.parts[1].text; newline); 2)); 1.description_core)}} {{1.hashtags}} {{1.disclosure}}",
+                "link": "{{1.link}}",
+                "alt_text": "{{1.alt_text}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2700,
+                  "y": 150,
+                  "name": "Publish Video Pin with Affiliate Link",
+                  "messages": [
+                    {
+                      "category": "setupreq",
+                      "severity": "error",
+                      "message": "Board: Value must not be empty."
+                    }
+                  ]
+                },
+                "restore": {
+                  "parameters": {
+                    "__IMTCONN__": {
+                      "label": "Aishat's pinterest connection",
+                      "data": {
+                        "scoped": "true",
+                        "connection": "pinterest2"
+                      }
+                    }
+                  },
+                  "expect": {
+                    "media_source": {
+                      "nested": {
+                        "source_type": {
+                          "mode": "chose",
+                          "label": "Video ID"
+                        },
+                        "content_type": {
+                          "mode": "edit"
+                        }
+                      }
+                    },
+                    "parent_pin_id": {
+                      "mode": "chose",
+                      "label": "Empty"
+                    },
+                    "ad_account_id": {
+                      "mode": "edit"
+                    },
+                    "board_section_id": {
+                      "mode": "edit"
+                    }
+                  }
+                },
+                "parameters": [
+                  {
+                    "name": "__IMTCONN__",
+                    "type": "account:pinterest2",
+                    "label": "Connection",
+                    "required": true
+                  }
+                ],
+                "expect": [
+                  {
+                    "name": "media_source",
+                    "type": "collection",
+                    "label": "Media Source",
+                    "required": true,
+                    "spec": [
+                      {
+                        "name": "source_type",
+                        "type": "select",
+                        "label": "Source Type",
+                        "required": true,
+                        "validate": {
+                          "enum": [
+                            "video_id",
+                            "image_url",
+                            "multiple_image_urls",
+                            "image_base64",
+                            "multiple_image_base64"
+                          ]
+                        }
+                      },
+                      {
+                        "name": "content_type",
+                        "type": "select",
+                        "label": "Content Type",
+                        "required": true,
+                        "validate": {
+                          "enum": [
+                            "image/jpeg",
+                            "image/png"
+                          ]
+                        }
+                      },
+                      {
+                        "name": "data",
+                        "type": "buffer",
+                        "label": "File Data",
+                        "required": true
+                      },
+                      {
+                        "name": "is_standard",
+                        "type": "boolean",
+                        "label": "Is Standard"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "board_id",
+                    "type": "select",
+                    "label": "Board",
+                    "required": true
+                  },
+                  {
+                    "name": "title",
+                    "type": "text",
+                    "label": "Pin Name"
+                  },
+                  {
+                    "name": "description",
+                    "type": "text",
+                    "label": "Description",
+                    "validate": {
+                      "max": 800
+                    }
+                  },
+                  {
+                    "name": "link",
+                    "type": "url",
+                    "label": "Link"
+                  },
+                  {
+                    "name": "alt_text",
+                    "type": "text",
+                    "label": "Alternative Text"
+                  },
+                  {
+                    "name": "dominant_color",
+                    "type": "color",
+                    "label": "Dominant Color"
+                  },
+                  {
+                    "name": "parent_pin_id",
+                    "type": "select",
+                    "label": "Parent Pin"
+                  },
+                  {
+                    "name": "ad_account_id",
+                    "type": "select",
+                    "label": "Ad Account"
+                  },
+                  {
+                    "name": "board_section_id",
+                    "type": "select",
+                    "label": "Board Section"
+                  }
+                ]
+              },
+              "filter": {
+                "name": "Video finished processing",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{13.body.status}}",
+                      "b": "succeeded",
+                      "o": "text:equal"
+                    }
+                  ]
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": true,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": true,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu2.make.com",
+    "notes": []
+  }
+}
