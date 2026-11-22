@@ -177,17 +177,30 @@ def num(x):
         return 0.0
 
 
-def passes(p, f, exclude, posted_ids):
-    if str(p.get("product_id")) in posted_ids or not p.get("product_main_image_url"):
-        return False
+def why_not(p, f, exclude, posted_ids):
+    """Every reason this product fails the filters (empty list = it passes)."""
+    out = []
+    if str(p.get("product_id")) in posted_ids:
+        out.append("already used")
+    if not p.get("product_main_image_url"):
+        out.append("no image")
     title = (p.get("product_title") or "").lower()
     if any(w.lower() in title for w in exclude):
-        return False
+        out.append("excluded word")
     price = num(p.get("target_sale_price"))
-    return (pct(p.get("evaluate_rate")) >= f["min_good_rate"]
-            and num(p.get("lastest_volume")) >= f["min_orders"]
-            and pct(p.get("commission_rate")) >= f["min_commission"]
-            and f["min_price"] <= price <= f["max_price"])
+    if not f["min_price"] <= price <= f["max_price"]:
+        out.append("price")
+    if num(p.get("lastest_volume")) < f["min_orders"]:
+        out.append("orders")
+    if pct(p.get("commission_rate")) < f["min_commission"]:
+        out.append("commission")
+    if pct(p.get("evaluate_rate")) < f["min_good_rate"]:
+        out.append("rating")
+    return out
+
+
+def passes(p, f, exclude, posted_ids):
+    return not why_not(p, f, exclude, posted_ids)
 
 
 def score(p):
@@ -546,7 +559,7 @@ def gather(niche, cfg, tracking, done, want, need_premium=0):
     seen = set()
 
     def sweep(kws, filters, goal, tier):
-        found = []
+        found, looked, fails = [], set(), {}
         kws = kws[:]
         random.shuffle(kws)
         for kw in kws:
@@ -558,15 +571,28 @@ def gather(niche, cfg, tracking, done, want, need_premium=0):
                     break
                 for p in prods:
                     pid = str(p.get("product_id"))
-                    if pid not in seen and passes(p, filters, niche["exclude_words"], done):
-                        seen.add(pid)
-                        p["_kw"], p["_tier"] = kw, tier
-                        found.append(p)
+                    if pid in seen or pid in looked:
+                        continue
+                    looked.add(pid)
+                    why = why_not(p, filters, niche["exclude_words"], done)
+                    if why:
+                        for w_ in why:
+                            fails[w_] = fails.get(w_, 0) + 1
+                        continue
+                    seen.add(pid)
+                    p["_kw"], p["_tier"] = kw, tier
+                    found.append(p)
                 time.sleep(1)
                 if not prods:
                     break
             if len(found) >= goal:
                 break
+        detail = ", ".join(f"{k}: {v}" for k, v in sorted(fails.items(), key=lambda kv: -kv[1])) or "none"
+        print(f"[{name}] {tier} filter check: {len(looked)} different products found, {len(found)} passed. "
+              f"Products failing each rule (one product can fail several): {detail}")
+        if not found and looked:
+            print(f"[{name}] {tier}: nothing passed. The rule with the biggest number above is the one to relax "
+                  f"in config.json (min_orders, min_commission, min_good_rate or the price range).")
         return found
 
     def ranked(cands):
