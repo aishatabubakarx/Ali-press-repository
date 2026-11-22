@@ -191,13 +191,15 @@ def passes(p, f, exclude, posted_ids):
 
 
 def score(p):
+    """Popularity x rating x commission rate x how many dollars a sale actually pays."""
+    price, rate = num(p.get("target_sale_price")), pct(p.get("commission_rate"))
     return (math.log(num(p.get("lastest_volume")) + 1) * (pct(p.get("evaluate_rate")) / 100)
-            * (1 + pct(p.get("commission_rate")) / 20))
+            * (1 + rate / 20) * math.log1p(price * rate / 100))
 
 
 # --------------------------------------------------------------- text ----
 STOP = {"new", "hot", "sale", "free", "shipping", "hotsale", "fashion", "original",
-        "brand", "wholesale", "dropshipping", "drop", "ship", "pcs", "pc", "set"}
+        "brand", "wholesale", "dropshipping", "drop", "ship", "pcs", "pc"}
 
 
 def clean_title(t, max_words=7):
@@ -341,18 +343,32 @@ def scrim(top, strength=225):
 _logo_cache = {}
 
 
-def logo_stamp(cfg_logo, width=400):
-    """The brand logo (dusty-rose wordmark, transparent background) with a soft white halo, resized."""
+def logo_stamp(cfg_logo, width=210):
+    """Small brand tab for the pin's top-left corner: the wordmark on a clean white tab that sits
+    flush against the edges (square on the outside, rounded on the inside), so it reads on any photo."""
     key = (json.dumps(cfg_logo, sort_keys=True), width)
     if key not in _logo_cache:
-        glow = with_glow(load_logo(cfg_logo))
-        _logo_cache[key] = glow.resize((width, int(glow.height * width / glow.width)), Image.LANCZOS)
+        deep = dict(cfg_logo or {})                       # a deeper rose than the brand colour, for contrast
+        c = deep.get("color", "#C9768C").lstrip("#")
+        deep["color"] = "#%02X%02X%02X" % tuple(int(int(c[i:i + 2], 16) * 0.78) for i in (0, 2, 4))
+        lg = load_logo(deep)
+        pad = 12
+        lg = lg.resize((width, int(lg.height * width / lg.width)), Image.LANCZOS)
+        tw, th = lg.width + pad * 2, lg.height + pad * 2
+        scale = 4                                          # draw big, shrink for smooth corners
+        tab = Image.new("RGBA", (tw * scale, th * scale), (0, 0, 0, 0))
+        r = 16 * scale
+        ImageDraw.Draw(tab).rounded_rectangle((-r, -r, tw * scale - 1, th * scale - 1), radius=r,
+                                              fill=(255, 255, 255, 240))
+        tab = tab.resize((tw, th), Image.LANCZOS)
+        tab.alpha_composite(lg, (pad, pad))
+        _logo_cache[key] = tab
     return _logo_cache[key]
 
 
 def make_pin(product_img, headline, logo_cfg=None):
     """Image-first pin: the product photo fills the full width and is the hero.
-    Text sits on a dark gradient at the bottom, with the brand logo top-left."""
+    Text sits on a dark gradient at the bottom, with the small brand tab in the top-left corner."""
     col, plain = edge_color(product_img)
     if plain:   # white / flat studio backdrop: extend it seamlessly
         canvas = Image.new("RGB", (W, H), col)
@@ -368,7 +384,7 @@ def make_pin(product_img, headline, logo_cfg=None):
     canvas = Image.alpha_composite(canvas.convert("RGBA"), scrim(1010)).convert("RGB")
     stamp = logo_stamp(logo_cfg)
     canvas = canvas.convert("RGBA")
-    canvas.alpha_composite(stamp, (24, 24))
+    canvas.alpha_composite(stamp, (0, 0))
     canvas = canvas.convert("RGB")
     d = ImageDraw.Draw(canvas)
     for size in (84, 74, 66, 58, 50):                  # headline: shrink until it fits in 2 lines
@@ -475,37 +491,57 @@ def load_posted():
         return {}
 
 
-def gather(niche, cfg, tracking, done, want):
-    """Search AliExpress and return the best candidates that pass the niche's filters."""
+def gather(niche, cfg, tracking, done, want, need_premium=0):
+    """Search AliExpress and return the best candidates that pass the niche's filters.
+
+    Standard products ($80-$300 by default) come from `keywords` + `filters`. When need_premium > 0
+    and the niche has `premium_keywords` + `premium_filters` (the $300-$800 slice), that many premium
+    products are slotted in right after the first standard one, tagged p["_tier"] = "premium".
+    """
     name = niche["name"]
-    cands, seen = [], set()
-    kws = niche["keywords"][:]
-    random.shuffle(kws)
-    for kw in kws:
-        for page in range(1, cfg["settings"]["max_pages"] + 1):
-            try:
-                prods = search(kw, page, cfg, tracking)
-            except RuntimeError as e:
-                print(f"[{name}] {kw!r} page {page}: {e}")
+    s = cfg["settings"]
+    seen = set()
+
+    def sweep(kws, filters, goal, tier):
+        found = []
+        kws = kws[:]
+        random.shuffle(kws)
+        for kw in kws:
+            for page in range(1, s["max_pages"] + 1):
+                try:
+                    prods = search(kw, page, cfg, tracking)
+                except RuntimeError as e:
+                    print(f"[{name}] {kw!r} page {page}: {e}")
+                    break
+                for p in prods:
+                    pid = str(p.get("product_id"))
+                    if pid not in seen and passes(p, filters, niche["exclude_words"], done):
+                        seen.add(pid)
+                        p["_kw"], p["_tier"] = kw, tier
+                        found.append(p)
+                time.sleep(1)
+                if not prods:
+                    break
+            if len(found) >= goal:
                 break
-            for p in prods:
-                pid = str(p.get("product_id"))
-                if pid not in seen and passes(p, niche["filters"], niche["exclude_words"], done):
-                    seen.add(pid)
-                    p["_kw"] = kw
-                    cands.append(p)
-            time.sleep(1)
-            if not prods:
-                break
-        if len(cands) >= want * 4:
-            break
-    cands.sort(key=score, reverse=True)
-    first, used_kw = [], set()          # prefer one product per keyword so pins vary
-    for p in cands:
-        if p["_kw"] not in used_kw:
-            used_kw.add(p["_kw"])
-            first.append(p)
-    return first + [p for p in cands if p not in first]
+        return found
+
+    def ranked(cands):
+        cands.sort(key=score, reverse=True)
+        first, used_kw = [], set()      # prefer one product per keyword so pins vary
+        for p in cands:
+            if p["_kw"] not in used_kw:
+                used_kw.add(p["_kw"])
+                first.append(p)
+        return first + [p for p in cands if p not in first]
+
+    out = ranked(sweep(niche["keywords"], niche["filters"], want * 4, "standard"))
+    pf, pk = niche.get("premium_filters"), niche.get("premium_keywords")
+    if need_premium > 0 and pf and pk:
+        extra = ranked(sweep(pk, pf, need_premium * 4, "premium"))[:need_premium]
+        for i, p in enumerate(extra):
+            out.insert(min(1 + i, len(out)), p)
+    return out
 
 
 def video_ok(url, max_mb=25):
@@ -548,15 +584,22 @@ def run_singles(niche, cfg, tracking, hook, posted, args):
     vdone = posted.setdefault(f"{name}__videos", {})
     vcap = int(cfg["settings"].get("max_videos_per_day", 1))
     videos_today = sum(1 for d_ in vdone.values() if d_ == today)
-    cands = gather(niche, cfg, tracking, done, limit)
+    pdone = posted.setdefault(f"{name}__premium", {})
+    pcap = int(cfg["settings"].get("max_premium_per_day", 2))
+    premium_today = sum(1 for d_ in pdone.values() if d_ == today)
+    need_premium = max(0, min(int(cfg["settings"].get("premium_per_run", 1)), pcap - premium_today, limit))
+    cands = gather(niche, cfg, tracking, done, limit, need_premium)
     used_links = set()
     print(f"[{name}] {len(cands)} candidates passed filters; making up to {limit} pins "
-          f"(video pins today: {videos_today}/{vcap})")
+          f"(video pins today: {videos_today}/{vcap}, premium today: {premium_today}/{pcap})")
     made = 0
     for p in cands:
         if made >= limit:
             break
         pid = str(p["product_id"])
+        is_premium = p.get("_tier") == "premium"
+        if is_premium and premium_today >= pcap:
+            continue
         if (cfg["settings"].get("video_pins", True) and videos_today >= vcap
                 and p.get("product_video_url")):
             print(f"[{name}] {pid}: has a video but today's video cap ({vcap}) is used up, skipped (stays available for another day)")
@@ -579,6 +622,7 @@ def run_singles(niche, cfg, tracking, hook, posted, args):
         payload = {
             "pin_type": "video" if is_video else "image",
             "niche": name, "board_name": niche["board_name"], "product_id": pid,
+            "tier": "premium" if is_premium else "standard",
             # title / description_core are the NO-AI fallback; Make uses them if Gemini fails
             "title": title, "description": desc, "description_core": core,
             "hashtags": tags, "disclosure": DISCLOSURE,
@@ -593,7 +637,7 @@ def run_singles(niche, cfg, tracking, hook, posted, args):
         }
         kind = "VIDEO" if is_video else "image"
         if args.dry_run:
-            print(f"[{name}] DRY RUN {kind} pin {pid}: {title} | {link[:60]}")
+            print(f"[{name}] DRY RUN {kind} pin {pid} ({'premium' if is_premium else 'standard'}, ${p.get('target_sale_price')}, {p.get('commission_rate')}): {title} | {link[:60]}")
             made += 1
             continue
         ok, info = send(hook, payload)
@@ -602,6 +646,9 @@ def run_singles(niche, cfg, tracking, hook, posted, args):
             if is_video:
                 vdone[pid] = done[pid]
                 videos_today += 1
+            if is_premium:
+                pdone[pid] = done[pid]
+                premium_today += 1
             POSTED_FILE.write_text(json.dumps(posted, indent=1))
             made += 1
             print(f"[{name}] sent {kind} pin {pid}: {title}")
