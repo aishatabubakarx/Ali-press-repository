@@ -51,9 +51,9 @@
         "stainless steel kitchen rack"
       ],
       "filters": {
-        "min_good_rate": 90,
-        "min_orders": 500,
-        "min_commission": 5,
+        "min_good_rate": 88,
+        "min_orders": 50,
+        "min_commission": 4,
         "min_price": 80,
         "max_price": 300
       },
@@ -133,9 +133,9 @@
         "sideboard buffet cabinet"
       ],
       "premium_filters": {
-        "min_good_rate": 92,
-        "min_orders": 100,
-        "min_commission": 5,
+        "min_good_rate": 90,
+        "min_orders": 10,
+        "min_commission": 4,
         "min_price": 300.01,
         "max_price": 800
       },
